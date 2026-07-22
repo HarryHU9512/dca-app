@@ -1,0 +1,14 @@
+{
+  "name": "红利定投装置",
+  "short_name": "红利定投",
+  "description": "按权重定投红利股，凑整手顺延，股息自动复投",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0e17",
+  "theme_color": "#0a0e17",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0e17">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="红利定投">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>红利定投装置</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0e17;
+    --bg-2: #0f1521;
+    --panel: #131a2a;
+    --panel-2: #1a2236;
+    --panel-hover: #1e2940;
+    --border: #1e2940;
+    --border-light: #2a3550;
+    --text: #e8edf5;
+    --text-2: #8b95a8;
+    --text-3: #5a6378;
+    --primary: #f0b90b;
+    --primary-2: #fcd535;
+    --primary-dim: rgba(240, 185, 11, 0.12);
+    --up: #f6465d;
+    --up-dim: rgba(246, 70, 93, 0.12);
+    --down: #0ecb81;
+    --down-dim: rgba(14, 203, 129, 0.12);
+    --accent: #4d8eff;
+    --accent-dim: rgba(77, 142, 255, 0.12);
+    --warn: #f0b90b;
+    --ok: #0ecb81;
+    --shadow: 0 4px 12px rgba(0,0,0,0.3);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+    --glow: 0 0 20px rgba(240, 185, 11, 0.15);
+    --radius: 10px;
+    --radius-sm: 6px;
+    --mono: "SF Mono", "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(240, 185, 11, 0.06), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(77, 142, 255, 0.04), transparent);
+    background-attachment: fixed;
+    color: var(--text);
+    line-height: 1.5;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .container { max-width: 1280px; margin: 0 auto; padding: 20px; }
+
+  /* Header */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 0 20px; flex-wrap: wrap; gap: 12px;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary) 0%, #e0a800 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 800; color: #0a0e17;
+    box-shadow: var(--glow);
+    flex-shrink: 0;
+  }
+  h1 { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+  h1 span { color: var(--primary); }
+  .subtitle { font-size: 12px; color: var(--text-2); margin-top: 3px; letter-spacing: 0.2px; }
+  .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Buttons */
+  .btn {
+    padding: 8px 16px; border: 1px solid var(--border-light); background: var(--panel);
+    color: var(--text); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); font-family: inherit;
+    font-weight: 500; letter-spacing: 0.2px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { background: var(--panel-hover); border-color: var(--text-3); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, #d4a017 100%);
+    color: #0a0e17; border-color: transparent; font-weight: 600;
+    box-shadow: 0 2px 8px rgba(240, 185, 11, 0.25);
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, var(--primary-2) 0%, var(--primary) 100%);
+    box-shadow: 0 4px 16px rgba(240, 185, 11, 0.35);
+  }
+  .btn-danger { color: var(--up); border-color: rgba(246, 70, 93, 0.3); background: var(--up-dim); }
+  .btn-danger:hover { background: rgba(246, 70, 93, 0.2); border-color: var(--up); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .btn-ghost { border-color: transparent; background: transparent; color: var(--text-2); }
+  .btn-ghost:hover { background: var(--panel); color: var(--text); border-color: var(--border-light); }
+
+  /* Tabs */
+  .tabs {
+    display: flex; gap: 2px; border-bottom: 1px solid var(--border);
+    margin-bottom: 20px; overflow-x: auto;
+    padding-bottom: 0;
+  }
+  .tab {
+    padding: 12px 20px; cursor: pointer; color: var(--text-2);
+    border-bottom: 2px solid transparent; font-size: 14px; white-space: nowrap;
+    background: none; border-top: none; border-left: none; border-right: none;
+    font-family: inherit; font-weight: 500; letter-spacing: 0.3px;
+    transition: all 0.2s; position: relative; bottom: -1px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    color: var(--primary); border-bottom-color: var(--primary);
+    font-weight: 600;
+  }
+
+  /* Panels */
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 20px; margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .panel:hover { border-color: var(--border-light); }
+  .panel-title {
+    font-size: 16px; font-weight: 600; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    color: var(--text);
+  }
+  .panel-subtitle { font-size: 12px; color: var(--text-2); font-weight: 400; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 11px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  th {
+    background: var(--bg-2); color: var(--text-2); font-weight: 500; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--panel-2); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 12.5px; }
+  td.center, th.center { text-align: center; }
+  .up { color: var(--up); font-weight: 600; }
+  .down { color: var(--down); font-weight: 600; }
+  .muted { color: var(--text-3); }
+  .strong { font-weight: 600; color: var(--text); }
+
+  /* Inputs */
+  input[type="text"], input[type="number"], input[type="month"], input[type="date"], select {
+    padding: 8px 12px; border: 1px solid var(--border-light); border-radius: var(--radius-sm);
+    font-size: 13px; font-family: inherit; background: var(--bg-2); color: var(--text);
+    width: 100%; transition: all 0.2s;
+  }
+  input::placeholder { color: var(--text-3); }
+  input:focus, select:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-dim);
+    background: var(--panel);
+  }
+  input[type="checkbox"] { accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer; }
+  .input-inline { display: inline-block; width: auto; min-width: 80px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .form-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .form-field label { display: block; font-size: 11px; color: var(--text-2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
+  .form-field .hint { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+  /* KPI Cards */
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 14px; margin-bottom: 20px;
+  }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+    position: relative; overflow: hidden;
+    transition: all 0.2s;
+  }
+  .kpi::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--primary); opacity: 0.8;
+  }
+  .kpi:hover { border-color: var(--border-light); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .kpi-label { font-size: 11px; color: var(--text-2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
+  .kpi-value {
+    font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums;
+    font-family: var(--mono); letter-spacing: -0.5px; line-height: 1.2;
+  }
+  .kpi-sub { font-size: 11px; color: var(--text-3); margin-top: 6px; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .badge-ok { background: var(--down-dim); color: var(--down); border: 1px solid rgba(14, 203, 129, 0.2); }
+  .badge-warn { background: rgba(240, 185, 11, 0.1); color: var(--warn); border: 1px solid rgba(240, 185, 11, 0.2); }
+  .badge-info { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(77, 142, 255, 0.2); }
+  .badge-gray { background: var(--panel-2); color: var(--text-2); border: 1px solid var(--border-light); }
+
+  /* Tab content */
+  .tab-pane { display: none; animation: fadeIn 0.3s ease; }
+  .tab-pane.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  }
+  .modal-overlay.show { display: flex; animation: fadeIn 0.2s ease; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border-light);
+    border-radius: var(--radius); padding: 24px; max-width: 480px; width: 90%;
+    box-shadow: var(--shadow-lg);
+  }
+  .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+  /* Allocation breakdown */
+  .alloc-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .alloc-card {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 14px;
+    transition: border-color 0.2s;
+  }
+  .alloc-card:hover { border-color: var(--border-light); }
+  .alloc-card .name { font-size: 11px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
+  .alloc-card .val { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; font-family: var(--mono); margin-top: 4px; }
+
+  /* Alert */
+  .alert {
+    padding: 12px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 14px;
+    display: flex; gap: 10px; align-items: flex-start;
+    line-height: 1.6;
+  }
+  .alert-info { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(77, 142, 255, 0.2); }
+  .alert-warn { background: rgba(240, 185, 11, 0.08); color: var(--warn); border: 1px solid rgba(240, 185, 11, 0.2); }
+  .alert-ok { background: var(--down-dim); color: var(--down); border: 1px solid rgba(14, 203, 129, 0.2); }
+  .alert strong { font-weight: 700; }
+
+  /* Pie chart */
+  .pie-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .pie-svg { flex-shrink: 0; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); }
+  .pie-legend { flex: 1; min-width: 200px; }
+  .pie-legend-item {
+    display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pie-legend-item:last-child { border-bottom: none; }
+  .pie-legend-color { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .pie-legend-item .leg-name { flex: 1; color: var(--text); }
+  .pie-legend-item .leg-val { color: var(--primary); font-weight: 600; font-family: var(--mono); }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .container { padding: 12px; }
+    .form-row, .form-row.cols-2, .form-row.cols-4 { grid-template-columns: 1fr; }
+    table { font-size: 12px; }
+    th, td { padding: 8px 8px; }
+    .kpi-value { font-size: 20px; }
+    h1 { font-size: 18px; }
+    .logo { width: 38px; height: 38px; font-size: 19px; }
+    .tab { padding: 10px 14px; font-size: 13px; }
+  }
+
+  /* Segmented */
+  .seg { display: inline-flex; background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 3px; }
+  .seg button {
+    padding: 5px 12px; background: none; border: none; cursor: pointer;
+    font-size: 12px; border-radius: 4px; color: var(--text-2); font-family: inherit;
+    transition: all 0.15s;
+  }
+  .seg button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.2); font-weight: 500; }
+
+  .weight-input { width: 70px; text-align: right; }
+  .empty {
+    text-align: center; padding: 40px 16px; color: var(--text-3);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 10px; opacity: 0.3; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+  /* Table inside-cell inputs */
+  td input[type="text"], td input[type="number"] {
+    padding: 5px 8px; font-size: 12.5px; background: var(--bg);
+    border-color: var(--border);
+  }
+  td input:focus { background: var(--panel); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-left">
+      <div class="logo">¥</div>
+      <div>
+        <h1>红利定投装置</h1>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn" onclick="openSettings()">设置</button>
+      <button class="btn" onclick="exportData()">导出</button>
+      <button class="btn" onclick="importData()">导入</button>
+      <button class="btn btn-primary" onclick="openPriceRefresh()">刷新股价</button>
+      <button class="btn btn-danger" onclick="resetData()">清空</button>
+    </div>
+  </header>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="dashboard">资产看板</button>
+    <button class="tab" data-tab="portfolio">持仓管理</button>
+    <button class="tab" data-tab="plan">定投计划</button>
+    <button class="tab" data-tab="execute">执行记录</button>
+    <button class="tab" data-tab="dividend">股息管理</button>
+  </div>
+
+  <!-- ============== 资产看板 ============== -->
+  <div class="tab-pane active" id="tab-dashboard">
+    <div class="kpi-grid" id="kpi-grid"></div>
+    <div class="panel">
+      <div class="panel-title">
+        <span>当前配置与持仓</span>
+        <span class="panel-subtitle" id="config-summary"></span>
+      </div>
+      <div id="dashboard-table"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">权重分布</div>
+      <div class="pie-wrap" id="pie-wrap"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">定投历史汇总</div>
+      <div id="history-table"></div>
+    </div>
+  </div>
+
+  <!-- ============== 持仓管理 ============== -->
+  <div class="tab-pane" id="tab-portfolio">
+    <div class="panel">
+      <div class="panel-title">
+        <span>标的与权重</span>
+        <div>
+          <button class="btn btn-sm" onclick="loadSampleData()">📌 载入示例</button>
+          <button class="btn btn-sm btn-primary" onclick="addStockRow()">+ 新增标的</button>
+        </div>
+      </div>
+      <div class="alert alert-info">
+        💡 设定每个标的的目标权重（百分比），系统会按权重分配每月定投金额。
+      </div>
+      <table id="portfolio-table">
+        <thead>
+          <tr>
+            <th>代码</th>
+            <th>名称</th>
+            <th class="num">当前价</th>
+            <th class="num">目标权重</th>
+            <th class="num">持有股数</th>
+            <th class="num">持仓成本</th>
+            <th class="num">持仓市值</th>
+            <th class="num">实际权重</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="portfolio-tbody"></tbody>
+      </table>
+      <div class="panel-title" style="margin-top:16px">
+        <span>权重合计: <span id="weight-sum">0%</span></span>
+        <span id="weight-warn"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== 定投计划 ============== -->
+  <div class="tab-pane" id="tab-plan">
+    <div class="panel">
+      <div class="panel-title">
+        <span>本月定投计划</span>
+        <span class="panel-subtitle">按权重自动分配，凑整手顺延</span>
+      </div>
+      <div class="form-row cols-4">
+        <div class="form-field">
+          <label>定投月份</label>
+          <input type="month" id="plan-month">
+        </div>
+        <div class="form-field">
+          <label>本月基础定投 (¥)</label>
+          <input type="number" id="plan-base" step="100" min="0">
+        </div>
+        <div class="form-field">
+          <label>本次追加 (¥)（可选）</label>
+          <input type="number" id="plan-extra" step="100" min="0" value="0">
+        </div>
+        <div class="form-field">
+          <label>股息自动复投</label>
+          <select id="plan-reinvest">
+            <option value="1">开启（待投股息计入）</option>
+            <option value="0">关闭</option>
+          </select>
+        </div>
+      </div>
+      <div class="alert alert-info">
+        💡 买不到 1 手（100 股）的金额会顺延到下月。已顺延的金额下月会优先用于该标的，确保凑够 1 手。股息如果开启复投，会作为额外资金按权重分配。
+      </div>
+      <button class="btn btn-primary" onclick="generatePlan()">🔄 生成本月计划</button>
+      <div id="plan-result" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- ============== 执行记录 ============== -->
+  <div class="tab-pane" id="tab-execute">
+    <div class="panel">
+      <div class="panel-title">本月执行情况</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>定投月份</label>
+          <input type="month" id="exec-month">
+        </div>
+        <div class="form-field">
+          <label>说明 / 备注</label>
+          <input type="text" id="exec-note" placeholder="例如：某月大额追加 / 暂停等">
+        </div>
+        <div class="form-field">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="confirmExecute()">✅ 全部确认到账</button>
+        </div>
+      </div>
+      <div id="exec-result"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">历史执行记录</div>
+      <div id="exec-history"></div>
+    </div>
+  </div>
+
+  <!-- ============== 股息管理 ============== -->
+  <div class="tab-pane" id="tab-dividend">
+    <div class="panel">
+      <div class="panel-title">记录股息收入</div>
+      <div class="form-row cols-2">
+        <div class="form-field">
+          <label>股息所属月份</label>
+          <input type="month" id="div-month">
+        </div>
+        <div class="form-field">
+          <label>到账日期</label>
+          <input type="date" id="div-date">
+        </div>
+      </div>
+      <div id="div-rows"></div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button class="btn btn-sm" onclick="addDivRow()">+ 增加一行</button>
+        <button class="btn btn-primary btn-sm" onclick="saveDividends()">💾 保存股息记录</button>
+      </div>
+      <div class="alert alert-warn" style="margin-top:12px">
+        💡 开启股息复投后，未使用完的累计股息会进入下次定投计划。
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">股息历史</div>
+      <div id="div-history"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== Settings Modal ============== -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <div class="modal-title">⚙️ 全局设置</div>
+    <div class="form-field">
+      <label>每月定投基础金额 (¥)</label>
+      <input type="number" id="cfg-monthly" step="100" min="0">
+      <div class="hint">每月固定投入的金额（不含股息复投部分）</div>
+    </div>
+    <div class="form-field" style="margin-top:10px">
+      <label>起投月份</label>
+      <input type="month" id="cfg-start">
+    </div>
+    <div class="form-field" style="margin-top:10px">
+      <label>最小买入单位（默认 100 股）</label>
+      <input type="number" id="cfg-lot" value="100" min="100" step="100">
+    </div>
+    <div class="form-field" style="margin-top:10px">
+      <label>
+        <input type="checkbox" id="cfg-compound" checked>
+        开启股息自动复投
+      </label>
+    </div>
+    <div class="form-field" style="margin-top:10px">
+      <label>买入费率 (%)</label>
+      <input type="number" id="cfg-fee" value="0" step="0.01" min="0">
+      <div class="hint">券商佣金，目前多数万 1.5-万 3</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeSettings()">取消</button>
+      <button class="btn btn-primary" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== Refresh Price Modal ============== -->
+<div class="modal-overlay" id="price-modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">刷新股价</div>
+    <div class="alert alert-info" style="margin-bottom:12px">
+      粘贴或输入最新价。格式每行一个：<br>
+      <code>代码 价格</code> &nbsp;或&nbsp; <code>名称 价格</code> &nbsp;或&nbsp; <code>代码,价格</code>
+    </div>
+    <div class="form-field">
+      <label>批量输入</label>
+      <textarea id="price-text" rows="8" placeholder="600900 28.50&#10;招商银行 38.20&#10;中国移动 105.30" style="font-family:var(--mono);font-size:12.5px;padding:10px;width:100%;background:var(--bg-2);border:1px solid var(--border-light);border-radius:6px;color:var(--text);resize:vertical"></textarea>
+      <div class="hint">留空则不更新；价格不填表示该标的维持现价</div>
+    </div>
+    <div class="form-field" style="margin-top:10px">
+      <label>快捷设置（可手动覆盖）</label>
+      <div id="price-current-list" style="max-height:200px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closePriceRefresh()">取消</button>
+      <button class="btn btn-primary" onclick="applyPriceRefresh()">应用刷新</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================== Data Model ================== */
+const STORAGE_KEY = 'dca-app-v1';
+const DEFAULT_STATE = {
+  config: {
+    monthlyInvestment: 20000,
+    startMonth: '2025-01',
+    lotSize: 100,
+    autoCompound: true,
+    feeRate: 0,
+  },
+  portfolio: [], // [{code, name, currentPrice, weight}]
+  holdings: {},  // {code: {shares, totalCost}}
+  owed: {},      // {code: amount} 顺延未花的钱
+  records: [],   // [{month, plan, executed, dividends, note, reinvest}]
+  pendingPlan: null, // 还未执行的计划
+};
+
+let state = loadState();
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return JSON.parse(JSON.stringify(DEFAULT_STATE));
+    const parsed = JSON.parse(raw);
+    return Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), parsed);
+  } catch (e) {
+    return JSON.parse(JSON.stringify(DEFAULT_STATE));
+  }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+/* ================== Utility ================== */
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => isNaN(n) || n === null || n === undefined ? '-' : Number(n).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+const fmtPct = (n) => (n * 100).toFixed(2) + '%';
+const fmtYuan = (n) => '¥' + fmt(n);
+const todayStr = () => new Date().toISOString().slice(0, 7);
+const todayDate = () => new Date().toISOString().slice(0, 10);
+const COLOR_LIST = ['#f0b90b', '#4d8eff', '#0ecb81', '#f6465d', '#a855f7', '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#14b8a6'];
+
+function codeOf(stock) { return stock.code; }
+function getStock(code) { return state.portfolio.find(s => s.code === code); }
+function getHolding(code) { return state.holdings[code] || { shares: 0, totalCost: 0 }; }
+
+/* ================== Plan Calculator ==================
+   算法（按用户需求设计）：
+   1. 计算本月可用资金 = base + extra + 待投股息(若开启复投)
+   2. 每个标的初步分配 = 可用资金 × weight + 已有 owed
+   3. 分类：
+      - 买得起 1 手以上：买尽可能多的整手，剩余记为 surplus
+      - 买不起 1 手：全部记为 defer（顺延下月）
+   4. 一次重分配：把 surplus 按权重分给"已能买"的标的（不买给"不能买"的，因为加给它们也凑不到 1 手）
+   5. defer 顺延到下月，下月加入该标的的分配
+*/
+function generatePlanLogic(baseAmount, extraAmount, reinvestDividends) {
+  const totalAvailable = baseAmount + extraAmount
+    + (reinvestDividends && state.config.autoCompound ? getPendingDividends() : 0);
+
+  const lotSize = state.config.lotSize || 100;
+  const feeRate = (state.config.feeRate || 0) / 100;
+
+  // Step 1: 基础分配
+  const plan = state.portfolio.map(stock => {
+    const w = stock.weight;
+    const owed = state.owed[stock.code] || 0;
+    const baseAlloc = totalAvailable * w;
+    const alloc = baseAlloc + owed;
+    const price = stock.currentPrice || 0;
+    const costPerLot = price * lotSize * (1 + feeRate);
+    let lots = 0, shares = 0, cost = 0, surplus = 0, defer = 0;
+    if (price <= 0) {
+      defer = alloc; // 没价格不分配，全部顺延
+    } else if (alloc >= costPerLot) {
+      lots = Math.floor(alloc / costPerLot);
+      shares = lots * lotSize;
+      cost = shares * price * (1 + feeRate);
+      surplus = alloc - cost;
+    } else {
+      defer = alloc;
+    }
+    return { code: stock.code, name: stock.name, weight: w, price, baseAlloc, owed, alloc, lots, shares, cost, surplus, defer, costPerLot };
+  });
+
+  // Step 2: surplus 一次重分配给"能买更多"的标的（按权重）
+  const totalSurplus = plan.reduce((s, p) => s + p.surplus, 0);
+  if (totalSurplus > 0.01) {
+    const canBuy = plan.filter(p => p.cost > 0);
+    if (canBuy.length > 0) {
+      const totalW = canBuy.reduce((s, p) => s + p.weight, 0);
+      for (const p of canBuy) {
+        const add = totalSurplus * (p.weight / totalW);
+        const newAlloc = p.alloc + add;
+        const newLots = Math.floor(newAlloc / p.costPerLot);
+        const newShares = newLots * lotSize;
+        const newCost = newShares * p.price * (1 + feeRate);
+        p.alloc = newAlloc;
+        p.lots = newLots;
+        p.shares = newShares;
+        p.cost = newCost;
+        p.surplus = newAlloc - newCost;
+      }
+    }
+  }
+
+  return { totalAvailable, plan };
+}
+
+function getPendingDividends() {
+  // 累计已收股息 - 已通过复投花掉的部分
+  const totalDiv = state.records.reduce((s, r) => {
+    return s + Object.values(r.dividends || {}).reduce((ss, v) => ss + v, 0);
+  }, 0);
+  // 实际花掉的股息 = 历次定投中 base+extra 之外的差额
+  // 简单起见：已记录但未复投的 = totalDiv - sum(reinvest in past plans)
+  // 我们用更简单的口径：累计已用复投金额
+  const usedReinvest = state.records.reduce((s, r) => s + (r.reinvestUsed || 0), 0);
+  return Math.max(0, totalDiv - usedReinvest);
+}
+
+/* ================== UI: Dashboard ================== */
+function renderDashboard() {
+  // KPI
+  const totalInvested = state.records.reduce((s, r) => s + (r.totalCost || 0), 0);
+  const totalDivReceived = state.records.reduce((s, r) => {
+    return s + Object.values(r.dividends || {}).reduce((ss, v) => ss + v, 0);
+  }, 0);
+  const pendingDiv = getPendingDividends();
+
+  let marketValue = 0;
+  for (const stock of state.portfolio) {
+    const h = getHolding(stock.code);
+    marketValue += h.shares * (stock.currentPrice || 0);
+  }
+  const totalAssets = marketValue + totalDivReceived; // 已落袋股息也计为资产
+  const totalNetInvested = state.records.reduce((s, r) => s + (r.netInvested || 0), 0);
+  const profit = totalAssets - totalNetInvested;
+  const yieldRate = totalNetInvested > 0 ? profit / totalNetInvested : 0;
+
+  $('kpi-grid').innerHTML = `
+    <div class="kpi">
+      <div class="kpi-label">当前持仓市值</div>
+      <div class="kpi-value">${fmtYuan(marketValue)}</div>
+      <div class="kpi-sub">${state.portfolio.length} 个标的</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">累计净投入</div>
+      <div class="kpi-value">${fmtYuan(totalNetInvested)}</div>
+      <div class="kpi-sub">${state.records.length} 次记录</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">累计已收股息</div>
+      <div class="kpi-value">${fmtYuan(totalDivReceived)}</div>
+      <div class="kpi-sub">${pendingDiv > 0 ? '待投: ' + fmtYuan(pendingDiv) : '已全部复投'}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">总资产</div>
+      <div class="kpi-value">${fmtYuan(totalAssets)}</div>
+      <div class="kpi-sub">市值 + 累计股息</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">累计盈亏</div>
+      <div class="kpi-value ${profit >= 0 ? 'up' : 'down'}">${profit >= 0 ? '+' : ''}${fmtYuan(profit)}</div>
+      <div class="kpi-sub">${profit >= 0 ? '盈利' : '亏损'}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">综合收益率</div>
+      <div class="kpi-value ${yieldRate >= 0 ? 'up' : 'down'}">${yieldRate >= 0 ? '+' : ''}${(yieldRate * 100).toFixed(2)}%</div>
+      <div class="kpi-sub">含已收股息</div>
+    </div>
+  `;
+
+  $('config-summary').innerHTML = `
+    每月定投 <strong>${fmtYuan(state.config.monthlyInvestment)}</strong> ·
+    起投月 <strong>${state.config.startMonth}</strong> ·
+    股息复投 <strong>${state.config.autoCompound ? '开启' : '关闭'}</strong>
+  `;
+
+  // 持仓表
+  if (state.portfolio.length === 0) {
+    $('dashboard-table').innerHTML = '<div class="empty"><div class="empty-icon">📋</div>还没有配置标的，请到「持仓管理」添加。</div>';
+  } else {
+    let rows = '';
+    let totalW = 0, totalActualW = 0;
+    for (const stock of state.portfolio) {
+      totalW += stock.weight;
+      const h = getHolding(stock.code);
+      const mv = h.shares * (stock.currentPrice || 0);
+      totalActualW += mv;
+    }
+    for (const stock of state.portfolio) {
+      const h = getHolding(stock.code);
+      const mv = h.shares * (stock.currentPrice || 0);
+      const actualW = totalActualW > 0 ? mv / totalActualW : 0;
+      const unrealized = mv - h.totalCost;
+      const unrealizedPct = h.totalCost > 0 ? unrealized / h.totalCost : 0;
+      rows += `<tr>
+        <td>${stock.code}</td>
+        <td><strong>${stock.name}</strong></td>
+        <td class="num">${stock.currentPrice ? '¥' + fmt(stock.currentPrice) : '<span class="muted">未填</span>'}</td>
+        <td class="num">${(stock.weight * 100).toFixed(1)}%</td>
+        <td class="num">${fmt(h.shares)}</td>
+        <td class="num">${fmtYuan(h.totalCost)}</td>
+        <td class="num">${fmtYuan(mv)}</td>
+        <td class="num">${(actualW * 100).toFixed(1)}%</td>
+      </tr>`;
+    }
+    $('dashboard-table').innerHTML = `
+      <table>
+        <thead><tr>
+          <th>代码</th><th>名称</th>
+          <th class="num">当前价</th>
+          <th class="num">目标权重</th>
+          <th class="num">实际权重</th>
+          <th class="num">持有股数</th>
+          <th class="num">持仓成本</th>
+          <th class="num">市值</th>
+          <th class="num">浮动盈亏</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  // 饼图
+  renderPie();
+
+  // 历史
+  renderHistory();
+}
+
+function renderPie() {
+  if (state.portfolio.length === 0) {
+    $('pie-wrap').innerHTML = '<div class="empty">尚无数据</div>';
+    return;
+  }
+  const totalW = state.portfolio.reduce((s, p) => s + p.weight, 0);
+  let h = 0, m = 0, startAngle = -90;
+  const r = 70, cx = 90, cy = 90;
+  let svg = `<svg class="pie-svg" width="180" height="180" viewBox="0 0 180 180">`;
+  let legend = '';
+  for (let i = 0; i < state.portfolio.length; i++) {
+    const stock = state.portfolio[i];
+    const w = totalW > 0 ? stock.weight / totalW : 0;
+    const angle = w * 360;
+    const endAngle = startAngle + angle;
+    const x1 = cx + r * Math.cos(startAngle * Math.PI / 180);
+    const y1 = cy + r * Math.sin(startAngle * Math.PI / 180);
+    const x2 = cx + r * Math.cos(endAngle * Math.PI / 180);
+    const y2 = cy + r * Math.sin(endAngle * Math.PI / 180);
+    const largeArc = angle > 180 ? 1 : 0;
+    const color = COLOR_LIST[i % COLOR_LIST.length];
+    svg += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc} 1 ${x2},${y2} Z" fill="${color}" stroke="#0a0e17" stroke-width="2"/>`;
+    legend += `<div class="pie-legend-item">
+      <div class="pie-legend-color" style="background:${color}"></div>
+      <div class="leg-name">${stock.name}</div>
+      <div class="leg-val">${(w * 100).toFixed(1)}%</div>
+    </div>`;
+    startAngle = endAngle;
+  }
+  svg += `</svg>`;
+  $('pie-wrap').innerHTML = svg + `<div class="pie-legend">${legend}</div>`;
+}
+
+function renderHistory() {
+  if (state.records.length === 0) {
+    $('history-table').innerHTML = '<div class="empty">还没有执行记录，去「定投计划」生成计划并执行吧。</div>';
+    return;
+  }
+  let rows = '';
+  const sorted = [...state.records].sort((a, b) => b.month.localeCompare(a.month));
+  for (const r of sorted) {
+    const div = Object.values(r.dividends || {}).reduce((s, v) => s + v, 0);
+    const tickers = Object.entries(r.executed || {}).map(([code, e]) => `${getStock(code)?.name || code} ${e.shares}股`).join('，');
+    rows += `<tr>
+      <td><strong>${r.month}</strong></td>
+      <td>${tickers || '<span class="muted">未买入</span>'}</td>
+      <td class="num">${fmtYuan(r.totalCost || 0)}</td>
+      <td class="num">${fmtYuan(div)}</td>
+      <td class="num">${fmtYuan(r.netInvested || 0)}</td>
+      <td>${r.note || ''}</td>
+    </tr>`;
+  }
+  $('history-table').innerHTML = `
+    <table>
+      <thead><tr>
+        <th>月份</th><th>买入明细</th>
+        <th class="num">本次支出</th>
+        <th class="num">收到股息</th>
+        <th class="num">净投入</th>
+        <th>备注</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+/* ================== UI: Portfolio ================== */
+function renderPortfolio() {
+  const tbody = $('portfolio-tbody');
+  if (state.portfolio.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty">还没有标的，点击右上「新增标的」或「载入示例」</td></tr>';
+  } else {
+    let rows = '';
+    for (let i = 0; i < state.portfolio.length; i++) {
+      const s = state.portfolio[i];
+      const h = getHolding(s.code);
+      const mv = h.shares * (s.currentPrice || 0);
+      const totalW = state.portfolio.reduce((sum, p) => sum + p.weight, 0);
+      const totalMv = state.portfolio.reduce((sum, p) => sum + getHolding(p.code).shares * (p.currentPrice || 0), 0);
+      const actualW = totalMv > 0 ? mv / totalMv : 0;
+      rows += `<tr>
+        <td><input type="text" value="${s.code}" data-i="${i}" data-f="code" style="width:80px"></td>
+        <td><input type="text" value="${s.name}" data-i="${i}" data-f="name"></td>
+        <td class="num"><input type="number" step="0.01" value="${s.currentPrice || ''}" data-i="${i}" data-f="currentPrice" class="input-inline"></td>
+        <td class="num">
+          <input type="number" step="0.5" min="0" max="100" value="${(s.weight * 100).toFixed(2)}" data-i="${i}" data-f="weightPct" class="weight-input"> %
+        </td>
+        <td class="num">${fmt(h.shares)}</td>
+        <td class="num">${fmtYuan(h.totalCost)}</td>
+        <td class="num">${fmtYuan(mv)}</td>
+        <td class="num">${(actualW * 100).toFixed(1)}%</td>
+        <td><button class="btn btn-sm btn-danger" onclick="removeStock(${i})">删除</button></td>
+      </tr>`;
+    }
+    tbody.innerHTML = rows;
+
+    // 绑定 input 事件
+    tbody.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('change', (e) => {
+        const i = +e.target.dataset.i;
+        const f = e.target.dataset.f;
+        let v = e.target.value;
+        if (f === 'weightPct') v = (+v || 0) / 100;
+        else if (f === 'currentPrice') v = +v || 0;
+        state.portfolio[i][f] = v;
+        saveState();
+        renderPortfolio();
+        renderDashboard();
+      });
+    });
+  }
+  const totalW = state.portfolio.reduce((s, p) => s + p.weight, 0);
+  $('weight-sum').innerHTML = `${(totalW * 100).toFixed(2)}%`;
+  $('weight-sum').className = Math.abs(totalW - 1) < 0.001 ? 'up' : 'down';
+  $('weight-warn').innerHTML = Math.abs(totalW - 1) < 0.001
+    ? '<span class="badge badge-ok">✓ 权重合计 100%</span>'
+    : `<span class="badge badge-warn">⚠ 当前 ${(totalW*100).toFixed(2)}%，目标 100%</span>`;
+}
+
+function addStockRow() {
+  const code = prompt('请输入股票代码（如 600900）：');
+  if (!code) return;
+  const name = prompt('请输入股票名称：') || code;
+  const price = +prompt('当前股价（可后填）：') || 0;
+  const w = +prompt('目标权重 %（0-100）：') || 0;
+  state.portfolio.push({ code, name, currentPrice: price, weight: w / 100 });
+  saveState();
+  renderPortfolio();
+  renderDashboard();
+}
+
+function removeStock(i) {
+  if (!confirm(`确定删除「${state.portfolio[i].name}」？其历史记录会保留但不再显示。`)) return;
+  const code = state.portfolio[i].code;
+  state.portfolio.splice(i, 1);
+  // 不删除 holdings 和历史，但顺延需要清掉
+  delete state.owed[code];
+  saveState();
+  renderPortfolio();
+  renderDashboard();
+}
+
+function loadSampleData() {
+  if (state.portfolio.length > 0 && !confirm('当前已有数据，是否覆盖？')) return;
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  state.config.monthlyInvestment = 20000;
+  state.config.startMonth = '2025-01';
+  state.config.autoCompound = true;
+  state.portfolio = [
+    { code: '600900', name: '长江电力', currentPrice: 28.50, weight: 0.38 },
+    { code: '600036', name: '招商银行', currentPrice: 38.20, weight: 0.32 },
+    { code: '600941', name: '中国移动', currentPrice: 105.30, weight: 0.20 },
+    { code: '600887', name: '伊利股份', currentPrice: 27.50, weight: 0.10 },
+  ];
+  // 模拟几期已执行
+  const samplePrice = {
+    '600900': 27.80, '600036': 36.50, '600941': 102.00, '600887': 26.80,
+  };
+  for (let m = 1; m <= 3; m++) {
+    const month = `2025-0${m}`;
+    const executed = {};
+    let totalCost = 0;
+    for (const s of state.portfolio) {
+      const price = samplePrice[s.code];
+      const alloc = state.config.monthlyInvestment * s.weight;
+      const costPerLot = price * 100;
+      const lots = Math.floor(alloc / costPerLot);
+      const shares = lots * 100;
+      const cost = shares * price;
+      executed[s.code] = { shares, price, cost };
+      totalCost += cost;
+      if (!state.holdings[s.code]) state.holdings[s.code] = { shares: 0, totalCost: 0 };
+      state.holdings[s.code].shares += shares;
+      state.holdings[s.code].totalCost += cost;
+    }
+    state.records.push({
+      month, plan: {}, executed, dividends: {}, totalCost,
+      netInvested: totalCost, note: '示例数据', reinvestUsed: 0,
+    });
+  }
+  saveState();
+  renderAll();
+  alert('已载入示例数据：长江电力 / 招商银行 / 中国移动 / 伊利股份，3 个月历史。');
+}
+
+/* ================== UI: Plan ================== */
+function renderPlanTab() {
+  $('plan-month').value = state.pendingPlan?.month || todayStr();
+  $('plan-base').value = state.pendingPlan?.base ?? state.config.monthlyInvestment;
+  $('plan-extra').value = state.pendingPlan?.extra ?? 0;
+  $('plan-reinvest').value = state.config.autoCompound ? '1' : '0';
+  if (state.pendingPlan) renderPlanResult(state.pendingPlan);
+}
+
+function generatePlan() {
+  const month = $('plan-month').value || todayStr();
+  const base = +$('plan-base').value || 0;
+  const extra = +$('plan-extra').value || 0;
+  const reinvest = $('plan-reinvest').value === '1';
+  if (state.portfolio.length === 0) { alert('请先到「持仓管理」配置标的。'); return; }
+
+  const result = generatePlanLogic(base, extra, reinvest);
+  state.pendingPlan = {
+    month, base, extra, reinvest,
+    totalAvailable: result.totalAvailable,
+    rows: result.plan,
+    pendingDivUsed: reinvest ? getPendingDividends() : 0,
+  };
+  saveState();
+  renderPlanResult(state.pendingPlan);
+}
+
+function renderPlanResult(plan) {
+  const totalBuy = plan.rows.reduce((s, r) => s + r.cost, 0);
+  const totalOwed = plan.rows.reduce((s, r) => s + r.defer, 0);
+  const totalSurplus = plan.rows.reduce((s, r) => s + r.surplus, 0);
+  const divUsed = plan.pendingDivUsed || 0;
+  const reinvestNote = plan.reinvest ? `（含待投股息 <strong>${fmtYuan(divUsed)}</strong>）` : '';
+
+  let summary = `
+    <div class="alloc-summary">
+      <div class="alloc-card"><div class="name">本月总可用</div><div class="val">${fmtYuan(plan.totalAvailable)}</div></div>
+      <div class="alloc-card"><div class="name">预计买入</div><div class="val up">${fmtYuan(totalBuy)}</div></div>
+      <div class="alloc-card"><div class="name">顺延下月</div><div class="val ${totalOwed > 0 ? 'down' : 'muted'}">${fmtYuan(totalOwed)}</div></div>
+      <div class="alloc-card"><div class="name">剩余（按权重重分）</div><div class="val muted">${fmtYuan(totalSurplus)}</div></div>
+    </div>
+    <div class="alert alert-info">
+      本月基础 <strong>${fmtYuan(plan.base)}</strong>
+      ${plan.extra > 0 ? `+ 追加 <strong>${fmtYuan(plan.extra)}</strong>` : ''}
+      ${reinvestNote}
+    </div>
+  `;
+
+  let rows = '';
+  for (const r of plan.rows) {
+    const status = r.shares > 0
+      ? `<span class="badge badge-ok">买入 ${r.lots} 手</span>`
+      : (r.defer > 0 ? '<span class="badge badge-warn">顺延</span>' : '<span class="badge badge-gray">未配</span>');
+    rows += `<tr>
+      <td><strong>${r.name}</strong><br><span class="muted" style="font-size:11px">${r.code}</span></td>
+      <td class="num">¥${fmt(r.price)}</td>
+      <td class="num">${(r.weight * 100).toFixed(1)}%</td>
+      <td class="num">${fmtYuan(r.baseAlloc)}</td>
+      <td class="num">${r.owed > 0 ? '+' + fmtYuan(r.owed) : '-'}</td>
+      <td class="num">${fmtYuan(r.alloc)}</td>
+      <td class="num">${r.shares > 0 ? fmt(r.shares) : '-'}</td>
+      <td class="num">${fmtYuan(r.cost)}</td>
+      <td class="num">${r.defer > 0 ? '<span class="down">' + fmtYuan(r.defer) + '</span>' : '-'}</td>
+      <td>${status}</td>
+    </tr>`;
+  }
+
+  const html = `
+    ${summary}
+    <table>
+      <thead><tr>
+        <th>标的</th>
+        <th class="num">当前价</th>
+        <th class="num">权重</th>
+        <th class="num">基础分配</th>
+        <th class="num">上月顺延</th>
+        <th class="num">实际分配</th>
+        <th class="num">买入股数</th>
+        <th class="num">实际支出</th>
+        <th class="num">顺延下月</th>
+        <th>操作</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="goToExecute()">→ 去执行记录</button>
+      <button class="btn" onclick="state.pendingPlan=null; saveState(); renderPlanTab();">清除计划</button>
+    </div>
+  `;
+  $('plan-result').innerHTML = html;
+}
+
+function goToExecute() {
+  switchTab('execute');
+  renderExecuteTab();
+}
+
+/* ================== UI: Execute ================== */
+function renderExecuteTab() {
+  $('exec-month').value = state.pendingPlan?.month || todayStr();
+  $('exec-note').value = state.pendingPlan?.note || '';
+
+  if (!state.pendingPlan) {
+    $('exec-result').innerHTML = `
+      <div class="alert alert-warn">
+        ⚠ 还没有生成定投计划。请先到「定投计划」点击「生成本月计划」。
+      </div>`;
+  } else {
+    const plan = state.pendingPlan;
+    let html = `
+      <div class="alert alert-info">
+        计划月份 <strong>${plan.month}</strong> ·
+        总可用 <strong>${fmtYuan(plan.totalAvailable)}</strong> ·
+        预计买入 <strong>${fmtYuan(plan.rows.reduce((s,r)=>s+r.cost,0))}</strong>
+      </div>
+      <table>
+        <thead><tr>
+          <th>标的</th>
+          <th class="num">计划股数</th>
+          <th class="num">实际成交价</th>
+          <th class="num">实际股数</th>
+          <th class="num">实际金额</th>
+          <th class="num">顺延</th>
+        </tr></thead>
+        <tbody>
+    `;
+    for (const r of plan.rows) {
+      html += `<tr>
+        <td><strong>${r.name}</strong></td>
+        <td class="num">${r.shares > 0 ? fmt(r.shares) : '-'}</td>
+        <td class="num"><input type="number" step="0.01" value="${r.price || ''}" data-code="${r.code}" data-f="price" class="input-inline"></td>
+        <td class="num"><input type="number" step="100" value="${r.shares || 0}" data-code="${r.code}" data-f="shares" class="input-inline" style="width:90px"></td>
+        <td class="num exec-cost" data-code="${r.code}">${fmtYuan(r.cost)}</td>
+        <td class="num">${r.defer > 0 ? '<span class="down">' + fmtYuan(r.defer) + '</span>' : '-'}</td>
+      </tr>`;
+    }
+    html += `</tbody></table>`;
+    $('exec-result').innerHTML = html;
+
+    // 绑定事件 - 实时更新金额
+    $('exec-result').querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const code = inp.dataset.code;
+        const r = state.pendingPlan.rows.find(x => x.code === code);
+        const shares = +document.querySelector(`input[data-code="${code}"][data-f="shares"]`).value || 0;
+        const price = +document.querySelector(`input[data-code="${code}"][data-f="price"]`).value || 0;
+        document.querySelector(`.exec-cost[data-code="${code}"]`).textContent = fmtYuan(shares * price);
+      });
+    });
+  }
+
+  // 历史
+  if (state.records.length === 0) {
+    $('exec-history').innerHTML = '<div class="empty">尚无历史</div>';
+  } else {
+    let rows = '';
+    const sorted = [...state.records].sort((a, b) => b.month.localeCompare(a.month));
+    for (const r of sorted) {
+      const executed = Object.entries(r.executed || {});
+      const detail = executed.length
+        ? executed.map(([code, e]) => `${getStock(code)?.name || code} ${e.shares}股@¥${fmt(e.price)}`).join('<br>')
+        : '<span class="muted">未买入</span>';
+      rows += `<tr>
+        <td><strong>${r.month}</strong></td>
+        <td style="font-size:12px">${detail}</td>
+        <td class="num">${fmtYuan(r.totalCost || 0)}</td>
+        <td>${r.note || ''}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteRecord('${r.month}')">删除</button></td>
+      </tr>`;
+    }
+    $('exec-history').innerHTML = `
+      <table>
+        <thead><tr>
+          <th>月份</th><th>买入明细</th>
+          <th class="num">支出</th>
+          <th>备注</th>
+          <th>操作</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+}
+
+function confirmExecute() {
+  if (!state.pendingPlan) { alert('请先生成本月计划'); return; }
+  const plan = state.pendingPlan;
+  const month = $('exec-month').value || plan.month;
+  const note = $('exec-note').value;
+
+  // 收集实际执行
+  const executed = {};
+  let totalCost = 0;
+  let totalOwed = 0;
+  let reinvestUsed = 0;
+  for (const r of plan.rows) {
+    const priceInp = document.querySelector(`input[data-code="${r.code}"][data-f="price"]`);
+    const sharesInp = document.querySelector(`input[data-code="${r.code}"][data-f="shares"]`);
+    if (!priceInp || !sharesInp) continue;
+    const price = +priceInp.value || r.price;
+    const shares = +sharesInp.value || 0;
+    const cost = price * shares;
+    if (shares > 0 && price > 0) {
+      executed[r.code] = { shares, price, cost };
+      totalCost += cost;
+      // 更新持仓
+      if (!state.holdings[r.code]) state.holdings[r.code] = { shares: 0, totalCost: 0 };
+      state.holdings[r.code].shares += shares;
+      state.holdings[r.code].totalCost += cost;
+    }
+    // 顺延金额
+    if (r.defer > 0) {
+      state.owed[r.code] = (state.owed[r.code] || 0) + r.defer;
+      totalOwed += r.defer;
+    } else {
+      // 本月花完的清零
+      state.owed[r.code] = 0;
+    }
+  }
+  // 计算净投入 = 本月花的钱 - 用了多少股息复投
+  const pendingDivBefore = getPendingDividends();
+  reinvestUsed = plan.reinvest ? Math.min(pendingDivBefore, totalCost) : 0;
+  const netInvested = totalCost - reinvestUsed;
+
+  // 移除/更新该月记录
+  state.records = state.records.filter(r => r.month !== month);
+  state.records.push({
+    month,
+    plan: plan.rows.reduce((o, r) => (o[r.code] = r.alloc, o), {}),
+    executed,
+    dividends: {},
+    totalCost,
+    netInvested,
+    note,
+    reinvestUsed,
+    owedAfter: JSON.parse(JSON.stringify(state.owed)),
+  });
+  state.pendingPlan = null;
+  saveState();
+  alert(`✅ ${month} 定投已确认\n支出 ${fmtYuan(totalCost)} · 净投入 ${fmtYuan(netInvested)} · 顺延 ${fmtYuan(totalOwed)}`);
+  renderExecuteTab();
+  renderDashboard();
+  renderPortfolio();
+}
+
+function deleteRecord(month) {
+  if (!confirm(`删除 ${month} 的定投记录？持仓股数和成本也会回退。`)) return;
+  const r = state.records.find(x => x.month === month);
+  if (!r) return;
+  for (const [code, e] of Object.entries(r.executed || {})) {
+    if (state.holdings[code]) {
+      state.holdings[code].shares -= e.shares;
+      state.holdings[code].totalCost -= e.cost;
+      if (state.holdings[code].shares < 0) state.holdings[code] = { shares: 0, totalCost: 0 };
+    }
+  }
+  state.records = state.records.filter(x => x.month !== month);
+  saveState();
+  renderExecuteTab();
+  renderDashboard();
+  renderPortfolio();
+}
+
+/* ================== UI: Dividend ================== */
+function renderDivTab() {
+  $('div-month').value = state.pendingPlan?.month || todayStr();
+  $('div-date').value = todayDate();
+  const rows = $('div-rows');
+  let html = '<table><thead><tr><th>标的</th><th class="num">持有股数</th><th class="num">每股股息 (¥)</th><th class="num">实收股息 (¥)</th></tr></thead><tbody>';
+  for (const s of state.portfolio) {
+    const h = getHolding(s.code);
+    html += `<tr>
+      <td><strong>${s.name}</strong> <span class="muted">${s.code}</span></td>
+      <td class="num">${fmt(h.shares)}</td>
+      <td class="num"><input type="number" step="0.001" data-code="${s.code}" data-f="perShare" class="input-inline" placeholder="0.00"></td>
+      <td class="num"><input type="number" step="1" data-code="${s.code}" data-f="total" class="input-inline" placeholder="0"></td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  rows.innerHTML = html;
+
+  // 自动计算
+  rows.querySelectorAll('input[data-f="perShare"]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const code = inp.dataset.code;
+      const h = getHolding(code);
+      const per = +inp.value || 0;
+      const totalInp = document.querySelector(`input[data-code="${code}"][data-f="total"]`);
+      totalInp.value = (h.shares * per).toFixed(2);
+    });
+  });
+
+  // 历史
+  if (state.records.filter(r => Object.keys(r.dividends || {}).length).length === 0) {
+    $('div-history').innerHTML = '<div class="empty">尚无股息记录</div>';
+  } else {
+    let rowsHtml = '';
+    for (const r of [...state.records].sort((a, b) => b.month.localeCompare(a.month))) {
+      if (!r.dividends || Object.keys(r.dividends).length === 0) continue;
+      const total = Object.values(r.dividends).reduce((s, v) => s + v, 0);
+      const detail = Object.entries(r.dividends).map(([c, v]) => `${getStock(c)?.name || c}: ${fmtYuan(v)}`).join('，');
+      rowsHtml += `<tr>
+        <td><strong>${r.month}</strong></td>
+        <td>${detail}</td>
+        <td class="num"><strong>${fmtYuan(total)}</strong></td>
+      </tr>`;
+    }
+    $('div-history').innerHTML = `
+      <table>
+        <thead><tr><th>月份</th><th>明细</th><th class="num">合计</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `;
+  }
+}
+
+function addDivRow() { alert('请在表格中填写每个标的的股息金额。'); }
+
+function saveDividends() {
+  const month = $('div-month').value;
+  if (!month) { alert('请选择月份'); return; }
+  const date = $('div-date').value;
+  const dividends = {};
+  document.querySelectorAll('#div-rows input[data-f="total"]').forEach(inp => {
+    const v = +inp.value || 0;
+    if (v > 0) dividends[inp.dataset.code] = v;
+  });
+  if (Object.keys(dividends).length === 0) { alert('请填写至少一个标的的股息金额'); return; }
+  // 找到或创建该月记录
+  let r = state.records.find(x => x.month === month);
+  if (!r) {
+    r = { month, plan: {}, executed: {}, dividends: {}, totalCost: 0, netInvested: 0, note: '' };
+    state.records.push(r);
+  }
+  r.dividends = dividends;
+  r.dividendDate = date;
+  saveState();
+  alert(`✅ ${month} 股息记录已保存\n合计 ${fmtYuan(Object.values(dividends).reduce((s,v)=>s+v,0))}\n${state.config.autoCompound ? '下次定投时自动按权重分配使用。' : '股息复投未开启，资金保留在账上。'}`);
+  renderDivTab();
+  renderDashboard();
+}
+
+/* ================== Settings / Misc ================== */
+function openSettings() {
+  $('cfg-monthly').value = state.config.monthlyInvestment;
+  $('cfg-start').value = state.config.startMonth;
+  $('cfg-lot').value = state.config.lotSize;
+  $('cfg-compound').checked = state.config.autoCompound;
+  $('cfg-fee').value = state.config.feeRate;
+  $('settings-modal').classList.add('show');
+}
+function closeSettings() { $('settings-modal').classList.remove('show'); }
+function saveSettings() {
+  state.config.monthlyInvestment = +$('cfg-monthly').value || 0;
+  state.config.startMonth = $('cfg-start').value || '2025-01';
+  state.config.lotSize = +$('cfg-lot').value || 100;
+  state.config.autoCompound = $('cfg-compound').checked;
+  state.config.feeRate = +$('cfg-fee').value || 0;
+  saveState();
+  closeSettings();
+  renderAll();
+  alert('设置已保存');
+}
+
+function openPriceRefresh() {
+  if (state.portfolio.length === 0) {
+    alert('请先到「持仓管理」添加标的');
+    return;
+  }
+  // 预填当前价格作为默认
+  const lines = state.portfolio.map(s => `${s.code} ${s.currentPrice || ''}`.trim());
+  $('price-text').value = lines.join('\n');
+  // 列出可单独设置
+  const list = state.portfolio.map(s => {
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1"><strong>${s.name}</strong> <span class="muted" style="font-size:11px">${s.code}</span></div>
+      <input type="number" step="0.01" data-code="${s.code}" data-f="quick" class="input-inline" placeholder="${s.currentPrice || '0.00'}" style="width:100px">
+    </div>`;
+  }).join('');
+  $('price-current-list').innerHTML = list;
+  // 同步：textarea 改了之后，quick input 同步更新
+  const ta = $('price-text');
+  ta.oninput = syncQuickFromText;
+  $('price-current-list').querySelectorAll('input[data-f="quick"]').forEach(inp => {
+    inp.oninput = () => {
+      const code = inp.dataset.code;
+      const lines = ta.value.split('\n');
+      const newLines = lines.map(line => {
+        const trimmed = line.trim();
+        const m = trimmed.match(/^(\S+)[\s,]+(\S*)$/);
+        if (m && (m[1] === code)) {
+          return `${m[1]} ${inp.value}`;
+        }
+        return line;
+      });
+      ta.value = newLines.join('\n');
+    };
+  });
+  $('price-modal').classList.add('show');
+}
+
+function syncQuickFromText() {
+  // textarea 改变时，更新 quick input
+  const lines = $('price-text').value.split('\n').map(l => l.trim()).filter(Boolean);
+  for (const line of lines) {
+    const m = line.match(/^(\S+)[\s,]+(\S+)$/);
+    if (!m) continue;
+    const key = m[1];
+    const price = m[2];
+    const inp = document.querySelector(`input[data-f="quick"][data-code="${key}"]`)
+      || Array.from(document.querySelectorAll('input[data-f="quick"]')).find(i => {
+        return i.closest('div').querySelector('strong').textContent === key;
+      });
+    if (inp && price) inp.value = price;
+  }
+}
+
+function closePriceRefresh() {
+  $('price-modal').classList.remove('show');
+}
+
+function applyPriceRefresh() {
+  const text = $('price-text').value;
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const codeToStock = {};
+  const nameToStock = {};
+  for (const s of state.portfolio) {
+    codeToStock[s.code] = s;
+    nameToStock[s.name] = s;
+  }
+  let updated = 0;
+  for (const line of lines) {
+    const m = line.match(/^(\S+)[\s,]+(\S+)$/);
+    if (!m) continue;
+    const key = m[1];
+    const price = parseFloat(m[2]);
+    if (isNaN(price) || price <= 0) continue;
+    const stock = codeToStock[key] || nameToStock[key];
+    if (stock) {
+      stock.currentPrice = price;
+      updated++;
+    }
+  }
+  // 也从 quick input 收集（覆盖）
+  $('price-current-list').querySelectorAll('input[data-f="quick"]').forEach(inp => {
+    const v = parseFloat(inp.value);
+    if (!isNaN(v) && v > 0) {
+      const s = codeToStock[inp.dataset.code];
+      if (s) { s.currentPrice = v; updated++; }
+    }
+  });
+  saveState();
+  closePriceRefresh();
+  renderAll();
+  alert(`已刷新 ${updated} 个标的的股价`);
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `dca-backup-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importData() {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.json';
+  inp.onchange = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!confirm('确认导入？当前数据将被覆盖。')) return;
+        state = Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), data);
+        saveState();
+        renderAll();
+        alert('导入成功');
+      } catch (err) {
+        alert('文件格式错误: ' + err.message);
+      }
+    };
+    reader.readAsText(f);
+  };
+  inp.click();
+}
+
+function resetData() {
+  if (!confirm('⚠️ 确认清空所有数据？此操作不可撤销。')) return;
+  if (!confirm('再次确认：所有持仓、记录、股息都将被删除！')) return;
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  saveState();
+  renderAll();
+}
+
+/* ================== Tab switch ================== */
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+  if (name === 'plan') renderPlanTab();
+  if (name === 'execute') renderExecuteTab();
+  if (name === 'dividend') renderDivTab();
+  if (name === 'portfolio') renderPortfolio();
+  if (name === 'dashboard') renderDashboard();
+}
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => switchTab(t.dataset.tab));
+});
+
+/* ================== Init ================== */
+function renderAll() {
+  renderDashboard();
+  renderPortfolio();
+  renderPlanTab();
+  renderExecuteTab();
+  renderDivTab();
+}
+renderAll();
+
+// PWA Service Worker 注册
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').then(() => {
+      console.log('SW registered');
+    }).catch((e) => console.log('SW failed:', e));
+  });
+}
+</script>
+</body>
+</html>
