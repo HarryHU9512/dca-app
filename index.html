@@ -386,12 +386,13 @@
           <tr>
             <th>代码</th>
             <th>名称</th>
-            <th class="num">当前价</th>
+            <th class="num">买入价</th>
+            <th class="num">实时价</th>
             <th class="num">目标权重</th>
             <th class="num">持有股数</th>
-            <th class="num">持仓成本</th>
-            <th class="num">持仓市值</th>
-            <th class="num">实际权重</th>
+            <th class="num">成本</th>
+            <th class="num">市值</th>
+            <th class="num">浮动盈亏</th>
             <th>操作</th>
           </tr>
         </thead>
@@ -469,6 +470,18 @@
   <!-- ============== 股息管理 ============== -->
   <div class="tab-pane" id="tab-dividend">
     <div class="panel">
+      <div class="panel-title">自动计算股息</div>
+      <div class="alert alert-info">
+        输入每股分红金额，系统自动按持股数计算应收股息总额。<br>
+        勾选后点"一键记录"即可。
+      </div>
+      <div id="div-auto-calc"></div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="btn btn-sm" onclick="autoCalcDividends()">刷新计算</button>
+        <button class="btn btn-primary btn-sm" onclick="batchRecordDividends()">一键记录所选</button>
+      </div>
+    </div>
+    <div class="panel">
       <div class="panel-title">记录股息收入</div>
       <div class="form-row cols-2">
         <div class="form-field">
@@ -483,10 +496,10 @@
       <div id="div-rows"></div>
       <div style="margin-top:8px;display:flex;gap:8px">
         <button class="btn btn-sm" onclick="addDivRow()">+ 增加一行</button>
-        <button class="btn btn-primary btn-sm" onclick="saveDividends()">💾 保存股息记录</button>
+        <button class="btn btn-primary btn-sm" onclick="saveDividends()">保存股息记录</button>
       </div>
       <div class="alert alert-warn" style="margin-top:12px">
-        💡 开启股息复投后，未使用完的累计股息会进入下次定投计划。
+        开启股息复投后，未使用完的累计股息会进入下次定投计划。
       </div>
     </div>
     <div class="panel">
@@ -769,23 +782,24 @@ function renderDashboard() {
       rows += `<tr>
         <td>${stock.code}</td>
         <td><strong>${stock.name}</strong></td>
+        <td class="num">${(stock.entryPrice || 0) > 0 ? '¥' + fmt(stock.entryPrice) : '<span class="muted">--</span>'}</td>
         <td class="num">${stock.currentPrice ? '¥' + fmt(stock.currentPrice) : '<span class="muted">未填</span>'}</td>
         <td class="num">${(stock.weight * 100).toFixed(1)}%</td>
         <td class="num">${fmt(h.shares)}</td>
         <td class="num">${fmtYuan(h.totalCost)}</td>
         <td class="num">${fmtYuan(mv)}</td>
-        <td class="num">${(actualW * 100).toFixed(1)}%</td>
+        <td class="num ${unrealized >= 0 ? 'up' : 'down'}">${unrealized >= 0 ? '+' : ''}${fmtYuan(unrealized)}<br><span style="font-size:11px;font-weight:400">${(unrealizedPct*100).toFixed(2)}%</span></td>
       </tr>`;
     }
     $('dashboard-table').innerHTML = `
       <table>
         <thead><tr>
           <th>代码</th><th>名称</th>
-          <th class="num">当前价</th>
+          <th class="num">买入价</th>
+          <th class="num">实时价</th>
           <th class="num">目标权重</th>
-          <th class="num">实际权重</th>
           <th class="num">持有股数</th>
-          <th class="num">持仓成本</th>
+          <th class="num">成本</th>
           <th class="num">市值</th>
           <th class="num">浮动盈亏</th>
         </tr></thead>
@@ -871,33 +885,39 @@ function renderHistory() {
 function renderPortfolio() {
   const tbody = $('portfolio-tbody');
   if (state.portfolio.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="empty">还没有标的，点击右上「新增标的」或「载入示例」</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="empty">还没有标的，点击右上「新增标的」或「载入示例」</td></tr>';
   } else {
     let rows = '';
+    const totalMvAll = state.portfolio.reduce((sum, s) => sum + getHolding(s.code).shares * (s.currentPrice || 0), 0);
     for (let i = 0; i < state.portfolio.length; i++) {
       const s = state.portfolio[i];
       const h = getHolding(s.code);
-      const mv = h.shares * (s.currentPrice || 0);
-      const totalW = state.portfolio.reduce((sum, p) => sum + p.weight, 0);
-      const totalMv = state.portfolio.reduce((sum, p) => sum + getHolding(p.code).shares * (p.currentPrice || 0), 0);
-      const actualW = totalMv > 0 ? mv / totalMv : 0;
+      const entryPrice = s.entryPrice || 0;
+      const curPrice = s.currentPrice || 0;
+      const mv = h.shares * curPrice;
+      const cost = h.totalCost;
+      const pnl = mv - cost;
+      const pnlPct = cost > 0 ? (pnl / cost * 100).toFixed(2) : 0;
+      const actualW = totalMvAll > 0 ? (mv / totalMvAll * 100).toFixed(1) : 0;
       rows += `<tr>
-        <td><input type="text" value="${s.code}" data-i="${i}" data-f="code" style="width:80px"></td>
-        <td><input type="text" value="${s.name}" data-i="${i}" data-f="name"></td>
-        <td class="num"><input type="number" step="0.01" value="${s.currentPrice || ''}" data-i="${i}" data-f="currentPrice" class="input-inline"></td>
+        <td>${s.code}</td>
+        <td><strong>${s.name}</strong></td>
+        <td class="num">${entryPrice ? '¥' + fmt(entryPrice) : '<span class="muted">--</span>'}</td>
+        <td class="num">
+          <input type="number" step="0.01" value="${curPrice || ''}" data-i="${i}" data-f="currentPrice" class="input-inline" style="width:85px" placeholder="实时价">
+        </td>
         <td class="num">
           <input type="number" step="0.5" min="0" max="100" value="${(s.weight * 100).toFixed(2)}" data-i="${i}" data-f="weightPct" class="weight-input"> %
         </td>
         <td class="num">${fmt(h.shares)}</td>
-        <td class="num">${fmtYuan(h.totalCost)}</td>
+        <td class="num">${fmtYuan(cost)}</td>
         <td class="num">${fmtYuan(mv)}</td>
-        <td class="num">${(actualW * 100).toFixed(1)}%</td>
+        <td class="num ${pnl >= 0 ? 'up' : 'down'}">${pnl >= 0 ? '+' : ''}${fmtYuan(pnl)}<br><span style="font-size:11px;font-weight:400">${pnlPct}%</span></td>
         <td><button class="btn btn-sm btn-danger" onclick="removeStock(${i})">删除</button></td>
       </tr>`;
     }
     tbody.innerHTML = rows;
-
-    // 绑定 input 事件
+    // 绑定权重和实时价编辑
     tbody.querySelectorAll('input').forEach(inp => {
       inp.addEventListener('change', (e) => {
         const i = +e.target.dataset.i;
@@ -922,14 +942,45 @@ function renderPortfolio() {
 
 function addStockRow() {
   const code = prompt('请输入股票代码（如 600900）：');
-  if (!code) return;
-  const name = prompt('请输入股票名称：') || code;
-  const price = +prompt('当前股价（可后填）：') || 0;
-  const w = +prompt('目标权重 %（0-100）：') || 0;
-  state.portfolio.push({ code, name, currentPrice: price, weight: w / 100 });
-  saveState();
-  renderPortfolio();
-  renderDashboard();
+  if (!code || code.length < 6) { if (code) alert('代码格式不对，请输入6位代码'); return; }
+  // 检查重复
+  if (state.portfolio.find(s => s.code === code)) { alert('该代码已存在'); return; }
+  // 自动获取名称和实时价格
+  fetchSingleStockInfo(code, (info) => {
+    if (!info || info.price <= 0) {
+      alert('获取股票信息失败，请检查代码或网络连接\n可手动操作：在 Chrome 地址栏访问 qt.gtimg.cn/q=' + stockMarketCode(code));
+      return;
+    }
+    const name = info.name || code;
+    const price = info.price;
+    const nameConfirm = prompt('股票名称（自动获取，可修改）：', name);
+    if (!nameConfirm) return;
+    const priceConfirm = prompt('买入股价（自动获取，可修改）：', price.toFixed(2));
+    if (!priceConfirm) return;
+    const entryPrice = parseFloat(priceConfirm) || price;
+    const w = prompt('目标权重 %（如 20 表示 20%）：', '20');
+    if (w === null) return;
+    const shares = prompt('首次买入股数（必须是100的倍数，暂无持仓填 0）：', '0');
+    if (shares === null) return;
+    const entryShares = parseInt(shares) || 0;
+
+    state.portfolio.push({
+      code, name: nameConfirm,
+      weight: (+w || 20) / 100,
+      entryPrice: entryPrice,
+      entryShares: entryShares,
+      currentPrice: entryPrice,
+    });
+    if (!state.holdings[code]) state.holdings[code] = { shares: 0, totalCost: 0 };
+    if (entryShares > 0) {
+      state.holdings[code].shares += entryShares;
+      state.holdings[code].totalCost += entryShares * entryPrice;
+    }
+    saveState();
+    renderPortfolio();
+    renderDashboard();
+    alert('已添加 ' + nameConfirm + (entryShares > 0 ? ' | 买入 ' + entryShares + '股 @¥' + entryPrice : '（待定投）') + ' | 权重 ' + (+w || 20) + '%');
+  });
 }
 
 function removeStock(i) {
@@ -950,10 +1001,10 @@ function loadSampleData() {
   state.config.startMonth = '2025-01';
   state.config.autoCompound = true;
   state.portfolio = [
-    { code: '600900', name: '长江电力', currentPrice: 28.50, weight: 0.38 },
-    { code: '600036', name: '招商银行', currentPrice: 38.20, weight: 0.32 },
-    { code: '600941', name: '中国移动', currentPrice: 105.30, weight: 0.20 },
-    { code: '600887', name: '伊利股份', currentPrice: 27.50, weight: 0.10 },
+    { code: '600900', name: '长江电力', entryPrice: 28.50, entryShares: 200, currentPrice: 28.50, weight: 0.38 },
+    { code: '600036', name: '招商银行', entryPrice: 38.20, entryShares: 100, currentPrice: 38.20, weight: 0.32 },
+    { code: '600941', name: '中国移动', entryPrice: 105.30, entryShares: 0, currentPrice: 105.30, weight: 0.20 },
+    { code: '600887', name: '伊利股份', entryPrice: 27.50, entryShares: 0, currentPrice: 27.50, weight: 0.10 },
   ];
   // 模拟几期已执行
   const samplePrice = {
@@ -1253,6 +1304,9 @@ function deleteRecord(month) {
 function renderDivTab() {
   $('div-month').value = state.pendingPlan?.month || todayStr();
   $('div-date').value = todayDate();
+  // 自动计算区
+  autoCalcDividends();
+  // 手动输入表
   const rows = $('div-rows');
   let html = '<table><thead><tr><th>标的</th><th class="num">持有股数</th><th class="num">每股股息 (¥)</th><th class="num">实收股息 (¥)</th></tr></thead><tbody>';
   for (const s of state.portfolio) {
@@ -1302,7 +1356,66 @@ function renderDivTab() {
   }
 }
 
-function addDivRow() { alert('请在表格中填写每个标的的股息金额。'); }
+function autoCalcDividends() {
+  const container = $('div-auto-calc');
+  if (state.portfolio.length === 0) {
+    container.innerHTML = '<div class="empty">还没有持仓标的</div>';
+    return;
+  }
+  let html = '<table><thead><tr><th>标的</th><th class="num">持有股数</th><th class="num">每股分红 (¥)</th><th class="num">应收股息</th><th class="center">选择</th></tr></thead><tbody>';
+  for (const s of state.portfolio) {
+    const h = getHolding(s.code);
+    if (h.shares <= 0) continue;
+    html += '<tr>' +
+      '<td><strong>' + s.name + '</strong> <span class="muted">' + s.code + '</span></td>' +
+      '<td class="num">' + fmt(h.shares) + '</td>' +
+      '<td class="num"><input type="number" step="0.001" data-code="' + s.code + '" data-f="perShare" class="input-inline" style="width:90px" oninput="updateAutoDiv(this)"></td>' +
+      '<td class="num strong down" data-code="' + s.code + '" data-f="total">--</td>' +
+      '<td class="center"><input type="checkbox" data-code="' + s.code + '" data-f="select"></td>' +
+      '</tr>';
+  }
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function updateAutoDiv(inp) {
+  const code = inp.dataset.code;
+  const perShare = parseFloat(inp.value) || 0;
+  const h = getHolding(code);
+  const total = h.shares * perShare;
+  const cell = document.querySelector('#div-auto-calc [data-f="total"][data-code="' + code + '"]');
+  if (cell) cell.textContent = total > 0 ? '¥' + total.toFixed(2) : '--';
+}
+
+function batchRecordDividends() {
+  const month = $('div-month').value || todayStr();
+  const date = $('div-date').value;
+  const dividends = {};
+  const checkboxes = document.querySelectorAll('#div-auto-calc input[data-f="select"]:checked');
+  if (checkboxes.length === 0) { alert('请先勾选要记录的标的'); return; }
+  for (const cb of checkboxes) {
+    const code = cb.dataset.code;
+    const perInp = document.querySelector('#div-auto-calc input[data-f="perShare"][data-code="' + code + '"]');
+    if (!perInp) continue;
+    const perShare = parseFloat(perInp.value) || 0;
+    if (perShare <= 0) continue;
+    const h = getHolding(code);
+    dividends[code] = h.shares * perShare;
+  }
+  if (Object.keys(dividends).length === 0) { alert('请填写每股分红金额'); return; }
+  let r = state.records.find(x => x.month === month);
+  if (!r) {
+    r = { month, plan: {}, executed: {}, dividends: {}, totalCost: 0, netInvested: 0, note: '' };
+    state.records.push(r);
+  }
+  r.dividends = dividends;
+  r.dividendDate = date;
+  saveState();
+  const total = Object.values(dividends).reduce((s, v) => s + v, 0);
+  alert('已记录 ' + month + ' 股息\n合计 ' + fmtYuan(total) + '\n' + (state.config.autoCompound ? '下次定投将自动按权重分配使用。' : '股息复投未开启，资金保留在账上。'));
+  renderDivTab();
+  renderDashboard();
+}
 
 function saveDividends() {
   const month = $('div-month').value;
@@ -1374,6 +1487,39 @@ function stockMarketCode(code) {
   return 'sz' + c;
 }
 
+// 解码 fetch 返回的 GBK 文本
+function decodeText(buffer) {
+  return new TextDecoder('gb18030').decode(buffer);
+}
+
+// 解析腾讯行情数据：{ sh600900: {name, price}, ... }
+function parseStockData(text) {
+  const result = {};
+  const re = /v_(\w+)="([^"]+)"/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const parts = m[2].split('~');
+    result[m[1]] = {
+      name: parts[1],
+      price: parseFloat(parts[3]) || 0,
+      change: parseFloat(parts[32]) || 0,
+    };
+  }
+  return result;
+}
+
+// 获取单只股票信息（新增标的时使用）
+function fetchSingleStockInfo(code, callback) {
+  const scode = stockMarketCode(code);
+  fetch('/api/stock/' + scode)
+    .then(resp => resp.arrayBuffer())
+    .then(buf => {
+      const data = parseStockData(decodeText(buf));
+      callback(data[scode] || null);
+    })
+    .catch(() => callback(null));
+}
+
 function fetchStockPrices() {
   const codes = state.portfolio.map(s => stockMarketCode(s.code)).join(',');
   const url = '/api/stock/' + codes;
@@ -1384,32 +1530,22 @@ function fetchStockPrices() {
   }, 10000);
 
   fetch(url)
-    .then(resp => {
-      if (!resp.ok) throw new Error('status ' + resp.status);
-      return resp.text();
-    })
+    .then(resp => resp.arrayBuffer())
+    .then(buf => decodeText(buf))
     .then(text => {
       if (done) return;
       done = true;
       clearTimeout(timeout);
+      const data = parseStockData(text);
       let updated = 0;
-      // 腾讯行情返回格式：v_sh600900="1~长江电力~600900~28.78~..."
-      const re = /v_(\w+)="([^"]+)"/g;
-      let m;
-      while ((m = re.exec(text)) !== null) {
-        const parts = m[2].split('~');
-        const price = parseFloat(parts[3]);
-        if (price > 0) {
-          // 匹配对应标的
-          for (const stock of state.portfolio) {
-            if (stockMarketCode(stock.code) === m[1]) {
-              stock.currentPrice = price;
-              updated++;
-              break;
-            }
-          }
+      for (const stock of state.portfolio) {
+        const info = data[stockMarketCode(stock.code)];
+        if (info && info.price > 0) {
+          if (!stock.name || stock.name === stock.code) stock.name = info.name;
+          if (stock.currentPrice !== info.price) { stock.currentPrice = info.price; updated++; }
         }
       }
+      if (updated === 0 && !done) { done = true; return; }
       if (updated === 0) { onFetchFail(); return; }
       onFetchSuccess(updated);
     })
@@ -1607,44 +1743,42 @@ function stopAutoRefresh() {
   if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
 }
 
+function recalcPendingPlan() {
+  const p = state.pendingPlan;
+  const result = generatePlanLogic(p.base, p.extra, p.reinvest);
+  state.pendingPlan = {
+    month: p.month, base: p.base, extra: p.extra, reinvest: p.reinvest,
+    totalAvailable: result.totalAvailable,
+    rows: result.plan,
+    pendingDivUsed: p.reinvest ? getPendingDividends() : 0,
+  };
+  saveState();
+}
+
 function fetchStockPricesSilent() {
   const codes = state.portfolio.map(s => stockMarketCode(s.code)).join(',');
   if (!codes) return;
   let done = false;
   setTimeout(() => { if (!done) done = true; }, 8000);
   fetch('/api/stock/' + codes)
-    .then(resp => resp.text())
+    .then(resp => resp.arrayBuffer())
+    .then(buf => decodeText(buf))
     .then(text => {
       if (done) return;
       done = true;
-      const re = /v_(\w+)="([^"]+)"/g;
-      let m, updated = 0;
-      while ((m = re.exec(text)) !== null) {
-        const parts = m[2].split('~');
-        const price = parseFloat(parts[3]);
-        if (price > 0) {
-          for (const stock of state.portfolio) {
-            if (stockMarketCode(stock.code) === m[1]) {
-              if (stock.currentPrice !== price) { stock.currentPrice = price; updated++; }
-              break;
-            }
-          }
+      const data = parseStockData(text);
+      let updated = 0;
+      for (const stock of state.portfolio) {
+        const info = data[stockMarketCode(stock.code)];
+        if (info && info.price > 0) {
+          if (stock.currentPrice !== info.price) { stock.currentPrice = info.price; updated++; }
+          if (!stock.name || stock.name === stock.code) stock.name = info.name;
         }
       }
       if (updated > 0) {
         saveState();
-        if (state.pendingPlan) {
-          const p = state.pendingPlan;
-          const result = generatePlanLogic(p.base, p.extra, p.reinvest);
-          state.pendingPlan = {
-            month: p.month, base: p.base, extra: p.extra, reinvest: p.reinvest,
-            totalAvailable: result.totalAvailable,
-            rows: result.plan,
-            pendingDivUsed: p.reinvest ? getPendingDividends() : 0,
-          };
-          saveState();
-        }
-        renderAll();
+        if (state.pendingPlan) recalcPendingPlan();
+        renderAllSilent();
       }
     }).catch(() => {});
 }
