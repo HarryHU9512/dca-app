@@ -1805,6 +1805,12 @@ function recalcPendingPlan() {
   saveState();
 }
 
+function renderAllSilent() {
+  renderDashboard();
+  renderPortfolio();
+  if (state.pendingPlan) renderPlanTab();
+}
+
 function fetchStockPricesSilent() {
   const codes = state.portfolio.map(s => stockMarketCode(s.code)).join(',');
   if (!codes) return;
