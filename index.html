@@ -1280,19 +1280,20 @@ function confirmExecute() {
   reinvestUsed = plan.reinvest ? Math.min(pendingDivBefore, totalCost) : 0;
   const netInvested = totalCost - reinvestUsed;
 
-  // 移除/更新该月记录
-  state.records = state.records.filter(r => r.month !== month);
-  state.records.push({
-    month,
-    plan: plan.rows.reduce((o, r) => (o[r.code] = r.alloc, o), {}),
-    executed,
-    dividends: {},
-    totalCost,
-    netInvested,
-    note,
-    reinvestUsed,
-    owedAfter: JSON.parse(JSON.stringify(state.owed)),
-  });
+  // 合并到该月记录（保留之前的 executed/dividends）
+  let r = state.records.find(r => r.month === month);
+  if (!r) {
+    r = { month, plan: {}, executed: {}, dividends: {}, totalCost: 0, netInvested: 0, note: '', reinvestUsed: 0 };
+    state.records.push(r);
+  }
+  // 合并 executed（同月多次买入累加）
+  Object.assign(r.executed, executed);
+  r.totalCost = (r.totalCost || 0) + totalCost;
+  r.netInvested = (r.netInvested || 0) + netInvested;
+  r.reinvestUsed = (r.reinvestUsed || 0) + reinvestUsed;
+  r.plan = plan.rows.reduce((o, rr) => (o[rr.code] = rr.alloc, o), {});
+  if (note) r.note = (r.note ? r.note + '；' : '') + note;
+  r.owedAfter = JSON.parse(JSON.stringify(state.owed));
   state.pendingPlan = null;
   saveState();
   alert(`✅ ${month} 定投已确认\n支出 ${fmtYuan(totalCost)} · 净投入 ${fmtYuan(netInvested)} · 顺延 ${fmtYuan(totalOwed)}`);
