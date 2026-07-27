@@ -31,8 +31,8 @@ self.addEventListener('fetch', (e) => {
 
   // === 股票行情代理 ===
   // 页面 fetch /api/stock/sh600900,sh600036 → SW 代理请求 qt.gtimg.cn
-  if (url.pathname.startsWith('/api/stock/')) {
-    const codes = url.pathname.replace('/api/stock/', '');
+  if (url.pathname.indexOf('/api/stock/') !== -1) {
+    const codes = url.pathname.split('/api/stock/')[1];
     const targetUrl = 'https://qt.gtimg.cn/q=' + codes;
     e.respondWith(
       fetch(targetUrl).then((resp) => {

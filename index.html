@@ -1511,7 +1511,7 @@ function parseStockData(text) {
 // 获取单只股票信息（新增标的时使用）
 function fetchSingleStockInfo(code, callback) {
   const scode = stockMarketCode(code);
-  fetch('/api/stock/' + scode)
+  fetch('api/stock/' + scode)
     .then(resp => resp.arrayBuffer())
     .then(buf => {
       const data = parseStockData(decodeText(buf));
@@ -1522,7 +1522,7 @@ function fetchSingleStockInfo(code, callback) {
 
 function fetchStockPrices() {
   const codes = state.portfolio.map(s => stockMarketCode(s.code)).join(',');
-  const url = '/api/stock/' + codes;
+  const url = 'api/stock/' + codes;
   let done = false;
 
   const timeout = setTimeout(() => {
@@ -1760,7 +1760,7 @@ function fetchStockPricesSilent() {
   if (!codes) return;
   let done = false;
   setTimeout(() => { if (!done) done = true; }, 8000);
-  fetch('/api/stock/' + codes)
+  fetch('api/stock/' + codes)
     .then(resp => resp.arrayBuffer())
     .then(buf => decodeText(buf))
     .then(text => {
