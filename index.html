@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="theme-color" content="#0a0e17">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1508,16 +1509,45 @@ function parseStockData(text) {
   return result;
 }
 
-// 获取单只股票信息（新增标的时使用）
+// 获取单只股票信息（SW 代理 + JSONP 双轨 fallback）
 function fetchSingleStockInfo(code, callback) {
   const scode = stockMarketCode(code);
+  let done = false;
+  const codes = [scode];
+
+  // 方案 A：SW 代理（优先）
   fetch('api/stock/' + scode)
     .then(resp => resp.arrayBuffer())
     .then(buf => {
+      if (done) return;
       const data = parseStockData(decodeText(buf));
+      if (data[scode] && data[scode].price > 0) { done = true; callback(data[scode]); }
+    }).catch(() => {});
+
+  // 方案 B：JSONP fallback（3 秒后启动）
+  setTimeout(() => {
+    if (done) return;
+    const script = document.createElement('script');
+    script.src = 'https://qt.gtimg.cn/q=' + scode;
+    script.onload = () => {
+      if (done) { script.remove(); return; }
+      const raw = window['v_' + scode];
+      let text = '';
+      if (raw) text = 'v_' + scode + '="' + String(raw) + '"';
+      script.remove();
+      if (window['v_' + scode] !== undefined) delete window['v_' + scode];
+      const data = parseStockData(text);
+      done = true;
       callback(data[scode] || null);
-    })
-    .catch(() => callback(null));
+    };
+    script.onerror = () => {
+      if (done) return;
+      script.remove();
+      done = true;
+      callback(null);
+    };
+    document.head.appendChild(script);
+  }, 3000);
 }
 
 function fetchStockPrices() {
