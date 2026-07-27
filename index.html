@@ -289,6 +289,24 @@
   }
   .empty-icon { font-size: 40px; margin-bottom: 10px; opacity: 0.3; }
 
+  /* Toast */
+  .toast-bar {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: var(--primary);
+    color: #0a0e17;
+    text-align: center;
+    padding: 14px 16px;
+    font-weight: 600;
+    font-size: 14px;
+    z-index: 200;
+    animation: slideDown 0.25s ease;
+  }
+  .toast-bar.show { display: block; }
+  .toast-bar.error { background: var(--up); color: #fff; }
+  @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+
   /* Scrollbar */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
@@ -304,6 +322,7 @@
 </style>
 </head>
 <body>
+<div id="toast" class="toast-bar"></div>
 <div class="container">
   <header>
     <div class="header-left">
@@ -504,6 +523,18 @@
       <label>买入费率 (%)</label>
       <input type="number" id="cfg-fee" value="0" step="0.01" min="0">
       <div class="hint">券商佣金，目前多数万 1.5-万 3</div>
+    </div>
+    <div class="form-field" style="margin-top:14px">
+      <label>
+        <input type="checkbox" id="cfg-autorefresh">
+        自动刷新实时股价
+      </label>
+      <div class="hint">开启后每 N 秒自动拉取最新行情</div>
+    </div>
+    <div class="form-field" style="margin-top:10px">
+      <label>刷新间隔 (秒)</label>
+      <input type="number" id="cfg-interval" value="10" step="1" min="5" max="300">
+      <div class="hint">建议 10-30 秒，太频繁可能被限流</div>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeSettings()">取消</button>
@@ -1304,6 +1335,8 @@ function openSettings() {
   $('cfg-lot').value = state.config.lotSize;
   $('cfg-compound').checked = state.config.autoCompound;
   $('cfg-fee').value = state.config.feeRate;
+  $('cfg-autorefresh').checked = state.config.autoRefresh || false;
+  $('cfg-interval').value = state.config.refreshInterval || 10;
   $('settings-modal').classList.add('show');
 }
 function closeSettings() { $('settings-modal').classList.remove('show'); }
@@ -1313,8 +1346,11 @@ function saveSettings() {
   state.config.lotSize = +$('cfg-lot').value || 100;
   state.config.autoCompound = $('cfg-compound').checked;
   state.config.feeRate = +$('cfg-fee').value || 0;
+  state.config.autoRefresh = $('cfg-autorefresh').checked;
+  state.config.refreshInterval = +$('cfg-interval').value || 10;
   saveState();
   closeSettings();
+  startAutoRefresh();
   renderAll();
   alert('设置已保存');
 }
@@ -1324,54 +1360,142 @@ function openPriceRefresh() {
     alert('请先到「持仓管理」添加标的');
     return;
   }
-  // 预填当前价格作为默认
-  const lines = state.portfolio.map(s => `${s.code} ${s.currentPrice || ''}`.trim());
-  $('price-text').value = lines.join('\n');
-  // 列出可单独设置
+  // 自动从互联网获取实时股价
+  refreshBtn = document.querySelector('.header-actions .btn-primary');
+  if (refreshBtn) { refreshBtn.textContent = '刷新中...'; refreshBtn.disabled = true; }
+  showToast('正在获取实时股价...');
+  fetchStockPrices();
+}
+
+function stockMarketCode(code) {
+  // 600/601/603/605/900 → sh; 000/001/002/003/300 → sz
+  const c = code;
+  if (c.startsWith('6') || c.startsWith('9') || c.startsWith('5')) return 'sh' + c;
+  return 'sz' + c;
+}
+
+function fetchStockPrices() {
+  const codes = state.portfolio.map(s => stockMarketCode(s.code)).join(',');
+  const url = '/api/stock/' + codes;
+  let done = false;
+
+  const timeout = setTimeout(() => {
+    if (!done) { done = true; onFetchFail(); }
+  }, 10000);
+
+  fetch(url)
+    .then(resp => {
+      if (!resp.ok) throw new Error('status ' + resp.status);
+      return resp.text();
+    })
+    .then(text => {
+      if (done) return;
+      done = true;
+      clearTimeout(timeout);
+      let updated = 0;
+      // 腾讯行情返回格式：v_sh600900="1~长江电力~600900~28.78~..."
+      const re = /v_(\w+)="([^"]+)"/g;
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        const parts = m[2].split('~');
+        const price = parseFloat(parts[3]);
+        if (price > 0) {
+          // 匹配对应标的
+          for (const stock of state.portfolio) {
+            if (stockMarketCode(stock.code) === m[1]) {
+              stock.currentPrice = price;
+              updated++;
+              break;
+            }
+          }
+        }
+      }
+      if (updated === 0) { onFetchFail(); return; }
+      onFetchSuccess(updated);
+    })
+    .catch(() => {
+      if (done) return;
+      done = true;
+      clearTimeout(timeout);
+      onFetchFail();
+    });
+}
+
+function onFetchSuccess(updated) {
+  saveState();
+  if (state.pendingPlan) {
+    const p = state.pendingPlan;
+    const result = generatePlanLogic(p.base, p.extra, p.reinvest);
+    state.pendingPlan = {
+      month: p.month, base: p.base, extra: p.extra, reinvest: p.reinvest,
+      totalAvailable: result.totalAvailable,
+      rows: result.plan,
+      pendingDivUsed: p.reinvest ? getPendingDividends() : 0,
+    };
+    saveState();
+  }
+  hideToast();
+  if (refreshBtn) { refreshBtn.textContent = '刷新股价'; refreshBtn.disabled = false; }
+  renderAll();
+  setTimeout(() => {
+    showToast(state.pendingPlan ? ('已刷新 ' + updated + ' 个标的，定投计划已重算') : ('已刷新 ' + updated + ' 个标的'));
+    setTimeout(hideToast, 2000);
+  }, 50);
+}
+
+function onFetchFail() {
+  hideToast();
+  if (refreshBtn) { refreshBtn.textContent = '刷新股价'; refreshBtn.disabled = false; }
+  // 降级：打开手动输入弹窗
+  const lines = state.portfolio.map(s => s.code + ' ' + (s.currentPrice || '')).join('\n');
+  $('price-text').value = lines;
   const list = state.portfolio.map(s => {
-    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1"><strong>${s.name}</strong> <span class="muted" style="font-size:11px">${s.code}</span></div>
-      <input type="number" step="0.01" data-code="${s.code}" data-f="quick" class="input-inline" placeholder="${s.currentPrice || '0.00'}" style="width:100px">
-    </div>`;
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">' +
+      '<div style="flex:1"><strong>' + s.name + '</strong> <span class="muted" style="font-size:11px">' + s.code + '</span></div>' +
+      '<input type="number" step="0.01" data-code="' + s.code + '" data-f="quick" class="input-inline" placeholder="' +
+      (s.currentPrice || '0.00') + '" style="width:100px">' +
+      '</div>';
   }).join('');
   $('price-current-list').innerHTML = list;
-  // 同步：textarea 改了之后，quick input 同步更新
+  // 绑定双向同步
   const ta = $('price-text');
-  ta.oninput = syncQuickFromText;
+  ta.oninput = () => {
+    const lines = ta.value.split('\n').map(l => l.trim()).filter(Boolean);
+    for (const line of lines) {
+      const m = line.match(/^(\S+)[\s,]+(\S+)$/);
+      if (!m) continue;
+      const key = m[1], price = m[2];
+      const inp = document.querySelector('input[data-f="quick"][data-code="' + key + '"]');
+      if (inp && price) inp.value = price;
+    }
+  };
   $('price-current-list').querySelectorAll('input[data-f="quick"]').forEach(inp => {
     inp.oninput = () => {
       const code = inp.dataset.code;
       const lines = ta.value.split('\n');
       const newLines = lines.map(line => {
-        const trimmed = line.trim();
-        const m = trimmed.match(/^(\S+)[\s,]+(\S*)$/);
-        if (m && (m[1] === code)) {
-          return `${m[1]} ${inp.value}`;
-        }
+        const m = line.trim().match(/^(\S+)[\s,]+(\S*)$/);
+        if (m && m[1] === code) return m[1] + ' ' + inp.value;
         return line;
       });
       ta.value = newLines.join('\n');
     };
   });
   $('price-modal').classList.add('show');
+  showToast('自动获取失败，请手动输入股价');
+  setTimeout(hideToast, 2500);
 }
 
-function syncQuickFromText() {
-  // textarea 改变时，更新 quick input
-  const lines = $('price-text').value.split('\n').map(l => l.trim()).filter(Boolean);
-  for (const line of lines) {
-    const m = line.match(/^(\S+)[\s,]+(\S+)$/);
-    if (!m) continue;
-    const key = m[1];
-    const price = m[2];
-    const inp = document.querySelector(`input[data-f="quick"][data-code="${key}"]`)
-      || Array.from(document.querySelectorAll('input[data-f="quick"]')).find(i => {
-        return i.closest('div').querySelector('strong').textContent === key;
-      });
-    if (inp && price) inp.value = price;
-  }
-}
+var refreshBtn = null;
 
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast-bar show';
+}
+function hideToast() {
+  $('toast').className = 'toast-bar';
+}
 function closePriceRefresh() {
   $('price-modal').classList.remove('show');
 }
@@ -1380,25 +1504,23 @@ function applyPriceRefresh() {
   const text = $('price-text').value;
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const codeToStock = {};
-  const nameToStock = {};
-  for (const s of state.portfolio) {
-    codeToStock[s.code] = s;
-    nameToStock[s.name] = s;
-  }
+  for (const s of state.portfolio) codeToStock[s.code] = s;
   let updated = 0;
   for (const line of lines) {
     const m = line.match(/^(\S+)[\s,]+(\S+)$/);
     if (!m) continue;
-    const key = m[1];
-    const price = parseFloat(m[2]);
+    const key = m[1], price = parseFloat(m[2]);
     if (isNaN(price) || price <= 0) continue;
-    const stock = codeToStock[key] || nameToStock[key];
-    if (stock) {
-      stock.currentPrice = price;
-      updated++;
+    const stock = codeToStock[key];
+    if (!stock) {
+      // 尝试名称匹配
+      const s = state.portfolio.find(p => p.name === key);
+      if (s) { s.currentPrice = price; updated++; }
+      continue;
     }
+    stock.currentPrice = price;
+    updated++;
   }
-  // 也从 quick input 收集（覆盖）
   $('price-current-list').querySelectorAll('input[data-f="quick"]').forEach(inp => {
     const v = parseFloat(inp.value);
     if (!isNaN(v) && v > 0) {
@@ -1408,8 +1530,22 @@ function applyPriceRefresh() {
   });
   saveState();
   closePriceRefresh();
+  if (state.pendingPlan) {
+    const p = state.pendingPlan;
+    const result = generatePlanLogic(p.base, p.extra, p.reinvest);
+    state.pendingPlan = {
+      month: p.month, base: p.base, extra: p.extra, reinvest: p.reinvest,
+      totalAvailable: result.totalAvailable,
+      rows: result.plan,
+      pendingDivUsed: p.reinvest ? getPendingDividends() : 0,
+    };
+    saveState();
+  }
   renderAll();
-  alert(`已刷新 ${updated} 个标的的股价`);
+  setTimeout(() => {
+    showToast('已刷新 ' + updated + ' 个标的' + (state.pendingPlan ? '，定投计划已重算' : ''));
+    setTimeout(hideToast, 2000);
+  }, 50);
 }
 
 function exportData() {
@@ -1454,6 +1590,65 @@ function resetData() {
   renderAll();
 }
 
+
+/* ================== Auto Refresh Engine ================== */
+var autoRefreshTimer = null;
+
+function startAutoRefresh() {
+  stopAutoRefresh();
+  if (state.config.autoRefresh && state.portfolio.length > 0) {
+    const sec = state.config.refreshInterval || 10;
+    autoRefreshTimer = setInterval(fetchStockPricesSilent, sec * 1000);
+    fetchStockPricesSilent(); // 启动后立即刷新一次
+  }
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+}
+
+function fetchStockPricesSilent() {
+  const codes = state.portfolio.map(s => stockMarketCode(s.code)).join(',');
+  if (!codes) return;
+  let done = false;
+  setTimeout(() => { if (!done) done = true; }, 8000);
+  fetch('/api/stock/' + codes)
+    .then(resp => resp.text())
+    .then(text => {
+      if (done) return;
+      done = true;
+      const re = /v_(\w+)="([^"]+)"/g;
+      let m, updated = 0;
+      while ((m = re.exec(text)) !== null) {
+        const parts = m[2].split('~');
+        const price = parseFloat(parts[3]);
+        if (price > 0) {
+          for (const stock of state.portfolio) {
+            if (stockMarketCode(stock.code) === m[1]) {
+              if (stock.currentPrice !== price) { stock.currentPrice = price; updated++; }
+              break;
+            }
+          }
+        }
+      }
+      if (updated > 0) {
+        saveState();
+        if (state.pendingPlan) {
+          const p = state.pendingPlan;
+          const result = generatePlanLogic(p.base, p.extra, p.reinvest);
+          state.pendingPlan = {
+            month: p.month, base: p.base, extra: p.extra, reinvest: p.reinvest,
+            totalAvailable: result.totalAvailable,
+            rows: result.plan,
+            pendingDivUsed: p.reinvest ? getPendingDividends() : 0,
+          };
+          saveState();
+        }
+        renderAll();
+      }
+    }).catch(() => {});
+}
+
 /* ================== Tab switch ================== */
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
@@ -1478,12 +1673,22 @@ function renderAll() {
   renderDivTab();
 }
 renderAll();
+startAutoRefresh();
 
 // PWA Service Worker 注册
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js').then(() => {
-      console.log('SW registered');
+    navigator.serviceWorker.register('service-worker.js').then((reg) => {
+      console.log('SW registered v2');
+      // 检测 SW 更新
+      reg.onupdatefound = () => {
+        const installing = reg.installing;
+        installing.onstatechange = () => {
+          if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+            console.log('New SW ready, refresh needed');
+          }
+        };
+      };
     }).catch((e) => console.log('SW failed:', e));
   });
 }
