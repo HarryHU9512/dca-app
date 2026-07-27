@@ -718,7 +718,8 @@ function renderDashboard() {
     const h = getHolding(stock.code);
     marketValue += h.shares * (stock.currentPrice || 0);
   }
-  const totalAssets = marketValue + totalDivReceived; // 已落袋股息也计为资产
+  // 总资产 = 持仓市值 + 未花完的待投股息
+  const totalAssets = marketValue + pendingDiv;
   const totalNetInvested = state.records.reduce((s, r) => s + (r.netInvested || 0), 0);
   const profit = totalAssets - totalNetInvested;
   const yieldRate = totalNetInvested > 0 ? profit / totalNetInvested : 0;
@@ -976,6 +977,23 @@ function addStockRow() {
     if (entryShares > 0) {
       state.holdings[code].shares += entryShares;
       state.holdings[code].totalCost += entryShares * entryPrice;
+      // 写入初始买入记录
+      const nowMonth = new Date().toISOString().slice(0, 7);
+      const existR = state.records.find(r => r.month === nowMonth);
+      const batch = { shares: entryShares, price: entryPrice, cost: entryShares * entryPrice };
+      if (existR) {
+        existR.executed[code] = batch;
+        existR.totalCost = (existR.totalCost || 0) + entryShares * entryPrice;
+        existR.netInvested = (existR.netInvested || 0) + entryShares * entryPrice;
+      } else {
+        state.records.push({
+          month: nowMonth, plan: {},
+          executed: { [code]: batch }, dividends: {},
+          totalCost: entryShares * entryPrice,
+          netInvested: entryShares * entryPrice,
+          note: '初始买入', reinvestUsed: 0,
+        });
+      }
     }
     saveState();
     renderPortfolio();
