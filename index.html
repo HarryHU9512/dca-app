@@ -961,7 +961,7 @@ function addStockRow() {
     const entryPrice = parseFloat(priceConfirm) || price;
     const w = prompt('目标权重 %（如 20 表示 20%）：', '20');
     if (w === null) return;
-    const shares = prompt('首次买入股数（必须是100的倍数，暂无持仓填 0）：', '0');
+    const shares = prompt('首次买入股数（0=暂未买入，买入请填 100/200/300...）：', '0');
     if (shares === null) return;
     const entryShares = parseInt(shares) || 0;
 
@@ -1528,6 +1528,7 @@ function fetchSingleStockInfo(code, callback) {
   setTimeout(() => {
     if (done) return;
     const script = document.createElement('script');
+    script.charset = 'gb18030';
     script.src = 'https://qt.gtimg.cn/q=' + scode;
     script.onload = () => {
       if (done) { script.remove(); return; }
